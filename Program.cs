@@ -24,7 +24,6 @@ public class BuzzerHub : Hub
 
         var room = Rooms[roomCode];
 
-        // nome duplicato
         if (room.Players.Any(x => x.Equals(name, StringComparison.OrdinalIgnoreCase)))
         {
             await Clients.Caller.SendAsync("JoinError", "Nome già utilizzato");
@@ -33,9 +32,10 @@ public class BuzzerHub : Hub
 
         room.Players.Add(name);
 
-        // primo entrato = admin
         if (string.IsNullOrEmpty(room.Admin))
             room.Admin = name;
+
+        room.ConnectionMap[Context.ConnectionId] = name;
 
         await Groups.AddToGroupAsync(Context.ConnectionId, roomCode);
 
@@ -48,14 +48,35 @@ public class BuzzerHub : Hub
         if (!Rooms.ContainsKey(roomCode))
             return;
 
+        await RemoveUser(roomCode, name, Context.ConnectionId);
+    }
+
+    public override async Task OnDisconnectedAsync(Exception? exception)
+    {
+        foreach (var roomKey in Rooms.Keys.ToList())
+        {
+            var room = Rooms[roomKey];
+
+            if (room.ConnectionMap.ContainsKey(Context.ConnectionId))
+            {
+                var name = room.ConnectionMap[Context.ConnectionId];
+                await RemoveUser(roomKey, name, Context.ConnectionId);
+            }
+        }
+
+        await base.OnDisconnectedAsync(exception);
+    }
+
+    private async Task RemoveUser(string roomCode, string name, string connectionId)
+    {
         var room = Rooms[roomCode];
 
         room.Players.Remove(name);
         room.ClickOrder.RemoveAll(x => x.Name == name);
+        room.ConnectionMap.Remove(connectionId);
 
-        await Groups.RemoveFromGroupAsync(Context.ConnectionId, roomCode);
+        await Groups.RemoveFromGroupAsync(connectionId, roomCode);
 
-        // se esce admin passa al primo disponibile
         if (room.Admin == name)
             room.Admin = room.Players.FirstOrDefault() ?? "";
 
@@ -89,7 +110,6 @@ public class BuzzerHub : Hub
 
         var room = Rooms[roomCode];
 
-        // solo admin
         if (room.Admin != name)
             return;
 
@@ -104,6 +124,7 @@ public class Room
     public List<string> Players { get; set; } = new();
     public List<ClickEntry> ClickOrder { get; set; } = new();
     public string Admin { get; set; } = "";
+    public Dictionary<string, string> ConnectionMap { get; set; } = new();
 }
 
 public class ClickEntry
