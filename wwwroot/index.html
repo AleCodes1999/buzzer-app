@@ -212,15 +212,21 @@ let name = "";
 let joined = false;
 let isAdmin = false;
 
-connection.on("UpdatePlayers", players => {
+connection.on("UpdatePlayers", (players, admin) => {
 
     document.getElementById("players").innerHTML =
-        players.map(x => `<div>${x}</div>`).join("");
+        players.map(x =>
+            `<div>${x} ${x === admin ? '👑' : ''}</div>`
+        ).join("");
 
-    if (players.length > 0 && players[0] === name) {
-        isAdmin = true;
-        document.getElementById("resetBtn").style.display = "block";
-    }
+    isAdmin = admin === name;
+
+    document.getElementById("resetBtn").style.display =
+        isAdmin ? "block" : "none";
+});
+
+    connection.on("JoinError", msg => {
+    alert(msg);
 });
 
 connection.on("UpdateList", list => {
@@ -247,6 +253,13 @@ connection.on("UpdateList", list => {
         }).join("");
 });
 
+    const params = new URLSearchParams(window.location.search);
+const roomFromUrl = params.get("room");
+
+if (roomFromUrl) {
+    document.getElementById("room").value = roomFromUrl;
+}
+    
 connection.start()
     .then(() => console.log("Connesso"))
     .catch(err => console.error(err));
@@ -272,10 +285,11 @@ function join() {
             document.getElementById("joinPanel").style.display = "none";
             document.getElementById("backBtn").style.display = "flex";
 
+            // link automatico
+            history.replaceState(null, "", "?room=" + encodeURIComponent(room));
         })
         .catch(err => console.error(err));
 }
-
    function goBack(){
 
     connection.invoke("LeaveRoom", room, name);
@@ -299,6 +313,10 @@ function prenota() {
 
     if (!joined) return;
 
+    if (navigator.vibrate) {
+        navigator.vibrate(120);
+    }
+
     playBuzz();
 
     connection.invoke("Prenota", room, name)
@@ -319,12 +337,11 @@ function prenota() {
         .catch(err => console.error(err));
 }
 
-    function reset() {
+  function reset() {
 
     if (!joined) return;
 
-    connection.invoke("Reset", room)
-        .then(() => console.log("Reset eseguito"))
+    connection.invoke("Reset", room, name)
         .catch(err => console.error(err));
 }
 function playBuzz() {
