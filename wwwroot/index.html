@@ -225,15 +225,25 @@ connection.on("UpdatePlayers", players => {
 
 connection.on("UpdateList", list => {
 
+    let first = list.length > 0 ? list[0].time : 0;
+
     document.getElementById("lista").innerHTML =
         list.map((x, i) => {
+
+            let diff = x.time - first;
 
             let cls = "";
             if(i === 0) cls = "gold";
             if(i === 1) cls = "silver";
             if(i === 2) cls = "bronze";
 
-            return `<li class="${cls}">${i+1}. ${x}</li>`;
+            return `
+            <li class="${cls}">
+                ${i+1}. ${x.name}
+                <span style="float:right;">
+                    ${diff} ms
+                </span>
+            </li>`;
         }).join("");
 });
 
