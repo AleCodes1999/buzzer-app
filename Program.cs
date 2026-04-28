@@ -18,34 +18,34 @@ public class BuzzerHub : Hub
     private static Dictionary<string, Room> Rooms = new();
 
     public async Task<bool> JoinRoom(string roomCode, string name)
-{
-    if (!Rooms.ContainsKey(roomCode))
-        Rooms[roomCode] = new Room();
-
-    var room = Rooms[roomCode];
-
-    if (room.Players.Any(x => x.Equals(name, StringComparison.OrdinalIgnoreCase)))
     {
-        await Clients.Caller.SendAsync("JoinError", "Nome già utilizzato");
-        return false;
+        if (!Rooms.ContainsKey(roomCode))
+            Rooms[roomCode] = new Room();
+
+        var room = Rooms[roomCode];
+
+        if (room.Players.Any(x => x.Equals(name, StringComparison.OrdinalIgnoreCase)))
+        {
+            await Clients.Caller.SendAsync("JoinError", "Nome già utilizzato");
+            return false;
+        }
+
+        room.Players.Add(name);
+        room.Points[name] = 0;
+
+        if (string.IsNullOrEmpty(room.Admin))
+            room.Admin = name;
+
+        room.ConnectionMap[Context.ConnectionId] = name;
+
+        await Groups.AddToGroupAsync(Context.ConnectionId, roomCode);
+
+        await Clients.Group(roomCode).SendAsync("UpdatePlayers", room.Players, room.Admin);
+        await Clients.Group(roomCode).SendAsync("UpdatePoints", room.Points);
+        await Clients.Caller.SendAsync("UpdateList", room.ClickOrder);
+
+        return true;
     }
-
-    room.Players.Add(name);
-
-    if (string.IsNullOrEmpty(room.Admin))
-        room.Admin = name;
-
-    room.ConnectionMap[Context.ConnectionId] = name;
-
-    await Groups.AddToGroupAsync(Context.ConnectionId, roomCode);
-
-    await Clients.Group(roomCode)
-        .SendAsync("UpdatePlayers", room.Players, room.Admin);
-
-    await Clients.Caller.SendAsync("UpdateList", room.ClickOrder);
-
-    return true;
-}
 
     public async Task LeaveRoom(string roomCode, string name)
     {
@@ -78,6 +78,7 @@ public class BuzzerHub : Hub
         room.Players.Remove(name);
         room.ClickOrder.RemoveAll(x => x.Name == name);
         room.ConnectionMap.Remove(connectionId);
+        room.Points.Remove(name);
 
         await Groups.RemoveFromGroupAsync(connectionId, roomCode);
 
@@ -86,6 +87,7 @@ public class BuzzerHub : Hub
 
         await Clients.Group(roomCode).SendAsync("UpdatePlayers", room.Players, room.Admin);
         await Clients.Group(roomCode).SendAsync("UpdateList", room.ClickOrder);
+        await Clients.Group(roomCode).SendAsync("UpdatePoints", room.Points);
     }
 
     public async Task Prenota(string roomCode, string name)
@@ -121,6 +123,38 @@ public class BuzzerHub : Hub
 
         await Clients.Group(roomCode).SendAsync("UpdateList", room.ClickOrder);
     }
+
+    public async Task AddPoint(string roomCode, string adminName, string target)
+    {
+        if (!Rooms.ContainsKey(roomCode))
+            return;
+
+        var room = Rooms[roomCode];
+
+        if (room.Admin != adminName)
+            return;
+
+        if (room.Points.ContainsKey(target))
+            room.Points[target]++;
+
+        await Clients.Group(roomCode).SendAsync("UpdatePoints", room.Points);
+    }
+
+    public async Task RemovePoint(string roomCode, string adminName, string target)
+    {
+        if (!Rooms.ContainsKey(roomCode))
+            return;
+
+        var room = Rooms[roomCode];
+
+        if (room.Admin != adminName)
+            return;
+
+        if (room.Points.ContainsKey(target) && room.Points[target] > 0)
+            room.Points[target]--;
+
+        await Clients.Group(roomCode).SendAsync("UpdatePoints", room.Points);
+    }
 }
 
 public class Room
@@ -129,6 +163,7 @@ public class Room
     public List<ClickEntry> ClickOrder { get; set; } = new();
     public string Admin { get; set; } = "";
     public Dictionary<string, string> ConnectionMap { get; set; } = new();
+    public Dictionary<string, int> Points { get; set; } = new();
 }
 
 public class ClickEntry
