@@ -337,9 +337,6 @@ ${i+1}. ${x.name}
 </li>`;
 }).join("");
 
-if(list.length===1){
-flashScreen("#ffd700");
-}
 
 });
 
@@ -463,36 +460,21 @@ connection.invoke("Prenota",room,name);
 
 let confirmReset=false;
 
+// SOSTITUISCI TUTTA LA FUNZIONE reset() CON QUESTA
+
 function reset(){
 
 if(!isAdmin) return;
 
-if(!confirmReset){
-
-confirmReset=true;
-
-const btn=document.getElementById("resetBtn");
-btn.innerHTML="CONFERMA?";
-btn.style.background="#ef6c00";
-
-setTimeout(()=>{
-confirmReset=false;
-btn.innerHTML="RESET";
-btn.style.background="#d50000";
-},3000);
-
-return;
-}
-
 connection.invoke("Reset",room,name);
 
-confirmReset=false;
-
 const btn=document.getElementById("resetBtn");
-btn.innerHTML="RESET";
-btn.style.background="#d50000";
 
-flashScreen("#ff0000");
+btn.style.transform="scale(.92)";
+
+setTimeout(()=>{
+btn.style.transform="scale(1)";
+},120);
 }
 
 function toggleRound(){
@@ -556,26 +538,6 @@ navigator.serviceWorker.register("sw.js");
 }
   // IN FONDO ALLO SCRIPT INCOLLA QUESTO
 
-function flashScreen(color){
-
-const div=document.createElement("div");
-
-div.style.position="fixed";
-div.style.top="0";
-div.style.left="0";
-div.style.width="100%";
-div.style.height="100%";
-div.style.background=color;
-div.style.opacity="0.45";
-div.style.zIndex="9999";
-div.style.pointerEvents="none";
-div.style.transition=".35s";
-
-document.body.appendChild(div);
-
-setTimeout(()=>div.style.opacity="0",50);
-setTimeout(()=>div.remove(),400);
-}
 </script>
 
 </body>
