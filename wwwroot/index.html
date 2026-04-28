@@ -222,8 +222,9 @@ font-weight:bold;
 </div>
 
 <div class="buzzer" onclick="prenota()" ontouchstart="prenota()">PRENOTA</div>
-
-<button class="smallBtn share" onclick="shareRoom()">📤 Condividi stanza</button>
+<button class="smallBtn share" id="shareBtn" onclick="shareRoom()" style="display:none;">
+📤 Condividi stanza
+</button>
 <button id="roundBtn" class="smallBtn roundOpen" onclick="toggleRound()" style="display:none;">🟢 Round aperto</button>
 
 </div>
@@ -361,6 +362,7 @@ joined=true;
 document.getElementById("joinBtn").style.display="none";
 document.getElementById("joinPanel").style.display="none";
 document.getElementById("backBtn").style.display="flex";
+document.getElementById("shareBtn").style.display="block";
 
 history.replaceState(null,"","?room="+encodeURIComponent(room));
 });
@@ -378,6 +380,7 @@ document.getElementById("joinBtn").style.display="block";
 document.getElementById("backBtn").style.display="none";
 document.getElementById("resetBtn").style.display="none";
 document.getElementById("roundBtn").style.display="none";
+document.getElementById("shareBtn").style.display="none";
 
 document.getElementById("players").innerHTML="";
 document.getElementById("lista").innerHTML="";
