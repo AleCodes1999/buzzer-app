@@ -8,7 +8,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.5/signalr.min.js"></script>
 
 <style>
-<style>
 *{
     box-sizing:border-box;
 }
@@ -22,6 +21,23 @@ body{
     overflow-y:auto;
 }
 
+    #backBtn{
+    position:fixed;
+    top:15px;
+    right:15px;
+    font-size:30px;
+    cursor:pointer;
+    z-index:999;
+    background:rgba(255,255,255,0.1);
+    width:45px;
+    height:45px;
+    border-radius:50%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    box-shadow:0 0 10px #00e5ff;
+}
+    
 .container{
     display:flex;
     flex-direction:column;
@@ -133,10 +149,12 @@ li{
     background:#d50000;
 }
 </style>
-</style>
 </head>
 
 <body>
+    <div id="backBtn" onclick="goBack()" style="display:none;">
+    ↩️
+</div>
 
 <!-- PARTECIPANTI -->
 <div class="players">
@@ -150,8 +168,10 @@ li{
     <div class="left">
         <h1 style="color:#00e5ff;">BUZZER</h1>
 
-        <input id="room" placeholder="Codice stanza">
-        <input id="name" placeholder="Nome">
+        <div id="joinPanel">
+    <input id="room" placeholder="Codice stanza">
+    <input id="name" placeholder="Nome">
+</div>
 
         <br>
 
@@ -227,12 +247,31 @@ function join() {
 
     connection.invoke("JoinRoom", room, name)
         .then(() => {
+
             joined = true;
+
             document.getElementById("joinBtn").style.display = "none";
+            document.getElementById("joinPanel").style.display = "none";
+            document.getElementById("backBtn").style.display = "flex";
+
         })
         .catch(err => console.error(err));
 }
 
+    function goBack(){
+
+    joined = false;
+    isAdmin = false;
+
+    document.getElementById("joinPanel").style.display = "block";
+    document.getElementById("joinBtn").style.display = "block";
+    document.getElementById("resetBtn").style.display = "none";
+    document.getElementById("backBtn").style.display = "none";
+
+    document.getElementById("lista").innerHTML = "";
+    document.getElementById("players").innerHTML = "";
+}
+    
 function prenota() {
 
     if (!joined) return;
