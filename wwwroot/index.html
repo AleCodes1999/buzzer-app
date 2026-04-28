@@ -2,141 +2,138 @@
 <html lang="it">
 <head>
 <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <title>Buzzer</title>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.5/signalr.min.js"></script>
 
 <style>
-body {
-    margin: 0;
-    font-family: 'Segoe UI', sans-serif;
-    background: radial-gradient(circle at center, #001a3d, #000814);
-    color: white;
-    overflow: hidden;
+<style>
+*{
+    box-sizing:border-box;
 }
 
-/* LAYOUT */
-.container {
-    display: flex;
-    height: 100vh;
+body{
+    margin:0;
+    font-family:Segoe UI;
+    background:radial-gradient(circle,#002255,#000814);
+    color:white;
+    overflow:hidden;
 }
 
-/* LEFT */
-.left {
-    flex: 2;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
+.container{
+    display:flex;
+    flex-direction:column;
+    height:100vh;
+    padding:10px;
 }
 
-/* RIGHT */
-.right {
-    flex: 1;
-    padding: 20px;
+.players{
+    background:rgba(255,255,255,0.08);
+    border-radius:12px;
+    padding:8px;
+    font-size:14px;
+    text-align:center;
 }
 
-/* TOP LEFT PARTECIPANTI */
-.players {
-    position: absolute;
-    top: 20px;
-    left: 20px;
-    background: rgba(0,0,0,0.4);
-    padding: 10px;
-    border-radius: 12px;
-    font-size: 14px;
-    min-width: 120px;
-    box-shadow: 0 0 10px #00cfff;
+.players h4{
+    margin:0 0 5px 0;
+    color:#00e5ff;
 }
 
-.players h4 {
-    margin: 0 0 5px 0;
-    font-size: 12px;
-    color: #00e5ff;
+.left{
+    text-align:center;
+    margin-top:10px;
 }
 
-/* INPUT */
-input {
-    padding: 10px;
-    margin: 5px;
-    border-radius: 10px;
-    border: none;
-    font-size: 16px;
+input{
+    width:48%;
+    padding:12px;
+    margin:4px;
+    border:none;
+    border-radius:10px;
+    font-size:16px;
 }
 
-/* BUZZER */
-.buzzer {
-    width: 260px;
-    height: 260px;
-    border-radius: 50%;
-    background: radial-gradient(circle, #ff4d4d, #990000);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 36px;
-    font-weight: bold;
-    cursor: pointer;
-    box-shadow: 0 0 30px red, 0 0 80px red;
-    transition: 0.1s;
-    animation: pulse 1.8s infinite;
+.buzzer{
+    width:240px;
+    height:240px;
+    border-radius:50%;
+    margin:15px auto;
+    background:radial-gradient(circle,#ff4d4d,#990000);
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    font-size:34px;
+    font-weight:bold;
+    box-shadow:0 0 30px red,0 0 80px red;
+    animation:pulse 1.5s infinite;
 }
 
-.buzzer:active {
-    transform: scale(0.92);
+.buzzer:active{
+    transform:scale(.93);
 }
 
-/* ANIMAZIONE */
-@keyframes pulse {
-    0% { box-shadow: 0 0 30px red; }
-    50% { box-shadow: 0 0 80px red; }
-    100% { box-shadow: 0 0 30px red; }
+@keyframes pulse{
+    0%{box-shadow:0 0 20px red;}
+    50%{box-shadow:0 0 70px red;}
+    100%{box-shadow:0 0 20px red;}
 }
 
-/* CLASSIFICA */
-.right h2 {
-    text-align: center;
-    color: #00e5ff;
+.right{
+    flex:1;
+    overflow-y:auto;
+    margin-bottom:80px;
 }
 
-li {
-    background: rgba(255,255,255,0.08);
-    margin: 10px 0;
-    padding: 12px;
-    border-radius: 12px;
-    font-size: 18px;
-    display: flex;
-    justify-content: space-between;
+.right h2{
+    text-align:center;
+    color:#00e5ff;
+    margin:5px 0;
 }
 
-/* MEDAGLIE */
-.gold { background: linear-gradient(90deg, #ffd700, #b8860b); color:black; }
-.silver { background: linear-gradient(90deg, #c0c0c0, #888); color:black; }
-.bronze { background: linear-gradient(90deg, #cd7f32, #8b4513); color:white; }
-
-/* BOTTOM */
-.bottom {
-    position: fixed;
-    bottom: 0;
-    width: 100%;
-    display: flex;
+ul{
+    padding:0;
+    margin:0;
 }
 
-.bottom button {
-    flex: 1;
-    padding: 22px;
-    font-size: 20px;
-    border: none;
-    cursor: pointer;
-    color: white;
+li{
+    list-style:none;
+    padding:14px;
+    margin:6px 0;
+    border-radius:12px;
+    background:rgba(255,255,255,0.08);
+    font-size:18px;
 }
 
-.join {
-    background: linear-gradient(45deg, #00c853, #00e676);
+.gold{background:linear-gradient(90deg,#ffd700,#b8860b);color:black;}
+.silver{background:linear-gradient(90deg,#ddd,#888);color:black;}
+.bronze{background:linear-gradient(90deg,#cd7f32,#8b4513);}
+
+.bottom{
+    position:fixed;
+    bottom:0;
+    left:0;
+    width:100%;
+    display:flex;
 }
 
-.reset {
-    background: linear-gradient(45deg, #d50000, #ff1744);
+.bottom button{
+    flex:1;
+    border:none;
+    padding:18px;
+    font-size:22px;
+    color:white;
 }
+
+.join{
+    background:#00c853;
+}
+
+.reset{
+    background:#d50000;
+}
+</style>
 </style>
 </head>
 
