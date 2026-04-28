@@ -191,11 +191,33 @@ font-weight:bold;
 
 .join{background:#00c853;}
 .reset{background:#d50000;}
+  /* IN FONDO AL CSS INCOLLA QUESTO */
+
+@keyframes popIn{
+0%{transform:scale(.85);opacity:0;}
+100%{transform:scale(1);opacity:1;}
+}
 </style>
 </head>
 
 <body class="blue">
 
+
+<div id="statusBar" style="
+display:none;
+position:fixed;
+top:0;
+left:0;
+width:100%;
+padding:10px;
+text-align:center;
+font-weight:bold;
+z-index:5000;
+background:#ef6c00;
+color:white;
+">
+⚠️ Connessione persa...
+</div>
 <select id="themeSelect" onchange="changeTheme()">
 <option value="blue">🔵 Neon</option>
 <option value="green">🟢 Matrix</option>
@@ -247,7 +269,10 @@ font-weight:bold;
 </div>
 
 <script>
-const connection=new signalR.HubConnectionBuilder().withUrl("/buzzerHub").build();
+const connection=new signalR.HubConnectionBuilder()
+.withUrl("/buzzerHub")
+.withAutomaticReconnect([0,2000,5000,10000])
+.build();
 
 let room="";
 let name=localStorage.getItem("buzzer_name") || "";
@@ -290,6 +315,8 @@ btn.className="smallBtn roundClosed";
 }
 });
 
+// SOSTITUISCI connection.on("UpdateList"... ) CON QUESTO
+
 connection.on("UpdateList",list=>{
 
 let first=list.length?list[0].time:0;
@@ -304,11 +331,15 @@ if(i===0) cls="gold";
 if(i===1) cls="silver";
 if(i===2) cls="bronze";
 
-return `<li class="${cls}">
+return `<li class="${cls}" style="animation:popIn .35s;">
 ${i+1}. ${x.name}
 <span style="float:right;">${diff} ms</span>
 </li>`;
 }).join("");
+
+if(list.length===1){
+flashScreen("#ffd700");
+}
 
 });
 
@@ -339,6 +370,30 @@ ${x[1]} pt ${controls}
 
 connection.start();
 
+  // DOPO connection.start(); INCOLLA QUESTO
+
+connection.onreconnecting(()=>{
+document.getElementById("statusBar").style.display="block";
+document.getElementById("statusBar").innerHTML="⚠️ Connessione persa...";
+});
+
+connection.onreconnected(()=>{
+document.getElementById("statusBar").innerHTML="✅ Riconnesso";
+
+setTimeout(()=>{
+document.getElementById("statusBar").style.display="none";
+},1500);
+
+if(joined){
+connection.invoke("ReconnectRoom",room,name);
+}
+});
+
+connection.onclose(()=>{
+document.getElementById("statusBar").style.display="block";
+document.getElementById("statusBar").innerHTML="❌ Disconnesso";
+});
+  
 function join(){
 
 if(joined) return;
@@ -404,8 +459,40 @@ playBuzz(pos);
 connection.invoke("Prenota",room,name);
 }
 
+// SOSTITUISCI FUNZIONE reset() CON QUESTA
+
+let confirmReset=false;
+
 function reset(){
+
+if(!isAdmin) return;
+
+if(!confirmReset){
+
+confirmReset=true;
+
+const btn=document.getElementById("resetBtn");
+btn.innerHTML="CONFERMA?";
+btn.style.background="#ef6c00";
+
+setTimeout(()=>{
+confirmReset=false;
+btn.innerHTML="RESET";
+btn.style.background="#d50000";
+},3000);
+
+return;
+}
+
 connection.invoke("Reset",room,name);
+
+confirmReset=false;
+
+const btn=document.getElementById("resetBtn");
+btn.innerHTML="RESET";
+btn.style.background="#d50000";
+
+flashScreen("#ff0000");
 }
 
 function toggleRound(){
@@ -466,6 +553,28 @@ document.getElementById("themeSelect").value=savedTheme;
 
 if("serviceWorker" in navigator){
 navigator.serviceWorker.register("sw.js");
+}
+  // IN FONDO ALLO SCRIPT INCOLLA QUESTO
+
+function flashScreen(color){
+
+const div=document.createElement("div");
+
+div.style.position="fixed";
+div.style.top="0";
+div.style.left="0";
+div.style.width="100%";
+div.style.height="100%";
+div.style.background=color;
+div.style.opacity="0.45";
+div.style.zIndex="9999";
+div.style.pointerEvents="none";
+div.style.transition=".35s";
+
+document.body.appendChild(div);
+
+setTimeout(()=>div.style.opacity="0",50);
+setTimeout(()=>div.remove(),400);
 }
 </script>
 
