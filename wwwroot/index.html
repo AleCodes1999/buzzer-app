@@ -183,14 +183,14 @@ li{
 
         <br>
 
-        <div class="buzzer" onclick="prenota()">
+        <div class="buzzer" onclick="prenota()" ontouchstart="prenota()">
             PRENOTA
         </div>
     </div>
 
     <!-- RIGHT -->
     <div class="right">
-        <h2>🏆 Classifica</h2>
+        <h2>🏆 Prenotati</h2>
         <ul id="lista"></ul>
     </div>
 
@@ -295,11 +295,17 @@ function prenota() {
         .catch(err => console.error(err));
 }
 
-function reset() {
+function prenota() {
 
-    if (!isAdmin) return;
+    if (!joined) return;
 
-    connection.invoke("Reset", room)
+    if (navigator.vibrate) {
+        navigator.vibrate(120);
+    }
+
+    playBuzz();
+
+    connection.invoke("Prenota", room, name)
         .catch(err => console.error(err));
 }
 
