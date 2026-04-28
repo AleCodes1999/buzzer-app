@@ -9,91 +9,89 @@
 
 <style>
 *{box-sizing:border-box;}
-
 body{
-    margin:0;
-    font-family:Segoe UI;
-    color:white;
-    min-height:100vh;
-    overflow-y:auto;
-    transition:.4s;
+margin:0;
+font-family:Segoe UI;
+color:white;
+min-height:100vh;
+overflow-y:auto;
+transition:.4s;
 }
-
 body.blue{background:radial-gradient(circle,#002255,#000814);}
 body.green{background:radial-gradient(circle,#003d1f,#000814);}
 body.red{background:radial-gradient(circle,#4d0000,#000814);}
 body.gold{background:radial-gradient(circle,#5c4200,#000814);}
 
 #themeSelect{
-    position:fixed;
-    top:14px;
-    left:14px;
-    z-index:999;
-    padding:8px;
-    border-radius:10px;
-    border:none;
+position:fixed;
+top:14px;
+left:14px;
+z-index:999;
+padding:8px;
+border-radius:10px;
+border:none;
 }
 
 #backBtn{
-    position:fixed;
-    top:14px;
-    right:14px;
-    width:42px;
-    height:42px;
-    border-radius:12px;
-    background:rgba(255,255,255,.08);
-    color:#00e5ff;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    font-size:28px;
-    cursor:pointer;
-    z-index:999;
+position:fixed;
+top:14px;
+right:14px;
+width:42px;
+height:42px;
+border-radius:12px;
+background:rgba(255,255,255,.08);
+color:#00e5ff;
+display:flex;
+align-items:center;
+justify-content:center;
+font-size:28px;
+cursor:pointer;
+z-index:999;
 }
 
 .container{
-    display:flex;
-    flex-direction:column;
-    min-height:100vh;
-    padding:10px;
+display:flex;
+flex-direction:column;
+min-height:100vh;
+padding:10px;
 }
 
 .players{
-    background:rgba(255,255,255,.08);
-    border-radius:12px;
-    padding:8px;
-    font-size:14px;
-    text-align:center;
+background:rgba(255,255,255,.08);
+border-radius:12px;
+padding:8px;
+font-size:14px;
+text-align:center;
 }
 
 .left{text-align:center;margin-top:10px;}
 
 input{
-    width:48%;
-    padding:12px;
-    margin:4px;
-    border:none;
-    border-radius:10px;
-    font-size:16px;
+width:48%;
+padding:12px;
+margin:4px;
+border:none;
+border-radius:10px;
+font-size:16px;
 }
 
 .buzzer{
-    width:240px;
-    height:240px;
-    border-radius:50%;
-    margin:15px auto;
-    background:radial-gradient(circle,#ff4d4d,#990000);
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    font-size:34px;
-    font-weight:bold;
-    box-shadow:0 0 30px red,0 0 80px red;
-    animation:pulse 1.5s infinite;
-    user-select:none;
-    -webkit-user-select:none;
-    -webkit-touch-callout:none;
-    touch-action:manipulation;
+width:240px;
+height:240px;
+border-radius:50%;
+margin:15px auto;
+background:radial-gradient(circle,#ff4d4d,#990000);
+display:flex;
+justify-content:center;
+align-items:center;
+font-size:34px;
+font-weight:bold;
+box-shadow:0 0 30px red,0 0 80px red;
+animation:pulse 1.5s infinite;
+user-select:none;
+-webkit-user-select:none;
+-webkit-touch-callout:none;
+touch-action:manipulation;
 }
 
 .buzzer:active{transform:scale(.93);}
@@ -104,35 +102,45 @@ input{
 100%{box-shadow:0 0 20px red;}
 }
 
-.right{padding-bottom:100px;}
-
 li{
-    list-style:none;
-    padding:14px;
-    margin:6px 0;
-    border-radius:12px;
-    background:rgba(255,255,255,.08);
-    font-size:18px;
+list-style:none;
+padding:14px;
+margin:6px 0;
+border-radius:12px;
+background:rgba(255,255,255,.08);
+font-size:18px;
 }
 
 .gold{background:linear-gradient(90deg,#ffd700,#b8860b);color:black;}
 .silver{background:linear-gradient(90deg,#ddd,#888);color:black;}
 .bronze{background:linear-gradient(90deg,#cd7f32,#8b4513);}
 
+.pointBtn{
+padding:6px 10px;
+margin-left:5px;
+border:none;
+border-radius:8px;
+font-size:16px;
+cursor:pointer;
+}
+
+.plus{background:#00c853;color:white;}
+.minus{background:#d50000;color:white;}
+
 .bottom{
-    position:fixed;
-    bottom:0;
-    left:0;
-    width:100%;
-    display:flex;
+position:fixed;
+bottom:0;
+left:0;
+width:100%;
+display:flex;
 }
 
 .bottom button{
-    flex:1;
-    border:none;
-    padding:18px;
-    font-size:22px;
-    color:white;
+flex:1;
+border:none;
+padding:18px;
+font-size:22px;
+color:white;
 }
 
 .join{background:#00c853;}
@@ -178,6 +186,9 @@ PRENOTA
 <div class="right">
 <h2>🏆 Prenotati</h2>
 <ul id="lista"></ul>
+
+<h2>⭐ Punti</h2>
+<ul id="pointsList"></ul>
 </div>
 
 </div>
@@ -188,9 +199,7 @@ PRENOTA
 </div>
 
 <script>
-const connection = new signalR.HubConnectionBuilder()
-.withUrl("/buzzerHub")
-.build();
+const connection=new signalR.HubConnectionBuilder().withUrl("/buzzerHub").build();
 
 let room="";
 let name="";
@@ -199,25 +208,20 @@ let isAdmin=false;
 
 const params=new URLSearchParams(window.location.search);
 const roomFromUrl=params.get("room");
-if(roomFromUrl)
-document.getElementById("room").value=roomFromUrl;
+if(roomFromUrl) document.getElementById("room").value=roomFromUrl;
 
 window.addEventListener("beforeunload",()=>{
-if(joined)
-connection.invoke("LeaveRoom",room,name);
+if(joined) connection.invoke("LeaveRoom",room,name);
 });
 
 connection.on("JoinError",msg=>alert(msg));
 
 connection.on("UpdatePlayers",(players,admin)=>{
-
 document.getElementById("players").innerHTML=
 players.map(x=>`<div>${x} ${x===admin?'👑':''}</div>`).join("");
 
 isAdmin=(admin===name);
-
-document.getElementById("resetBtn").style.display=
-isAdmin?"block":"none";
+document.getElementById("resetBtn").style.display=isAdmin?"block":"none";
 });
 
 connection.on("UpdateList",list=>{
@@ -245,6 +249,32 @@ ${i+1}. ${x.name}
 }).join("");
 });
 
+connection.on("UpdatePoints",points=>{
+
+let sorted=Object.entries(points).sort((a,b)=>b[1]-a[1]);
+
+document.getElementById("pointsList").innerHTML=
+sorted.map((x,i)=>{
+
+let controls="";
+
+if(isAdmin){
+controls=`
+<button class="pointBtn plus" onclick="addPoint('${x[0]}')">+</button>
+<button class="pointBtn minus" onclick="removePoint('${x[0]}')">-</button>`;
+}
+
+return `
+<li>
+${i+1}. ${x[0]}
+<span style="float:right;">
+${x[1]} pt
+${controls}
+</span>
+</li>`;
+}).join("");
+});
+
 connection.start();
 
 function join(){
@@ -254,23 +284,22 @@ if(joined) return;
 room=document.getElementById("room").value.trim();
 name=document.getElementById("name").value.trim();
 
-if(!room || !name){
-    alert("Inserisci stanza e nome");
-    return;
+if(!room||!name){
+alert("Inserisci stanza e nome");
+return;
 }
 
-connection.invoke("JoinRoom", room, name)
-.then(success => {
+connection.invoke("JoinRoom",room,name).then(success=>{
 
-    if(!success) return;
+if(!success) return;
 
-    joined = true;
+joined=true;
 
-    document.getElementById("joinBtn").style.display = "none";
-    document.getElementById("joinPanel").style.display = "none";
-    document.getElementById("backBtn").style.display = "flex";
+document.getElementById("joinBtn").style.display="none";
+document.getElementById("joinPanel").style.display="none";
+document.getElementById("backBtn").style.display="flex";
 
-    history.replaceState(null,"","?room="+encodeURIComponent(room));
+history.replaceState(null,"","?room="+encodeURIComponent(room));
 });
 }
 
@@ -291,6 +320,7 @@ document.getElementById("resetBtn").style.display="none";
 
 document.getElementById("players").innerHTML="";
 document.getElementById("lista").innerHTML="";
+document.getElementById("pointsList").innerHTML="";
 }
 
 function prenota(){
@@ -311,8 +341,15 @@ connection.invoke("Prenota",room,name);
 }
 
 function reset(){
-if(joined)
-connection.invoke("Reset",room,name);
+if(joined) connection.invoke("Reset",room,name);
+}
+
+function addPoint(target){
+connection.invoke("AddPoint",room,name,target);
+}
+
+function removePoint(target){
+connection.invoke("RemovePoint",room,name,target);
 }
 
 function playBuzz(pos){
@@ -338,8 +375,7 @@ setTimeout(()=>osc.stop(),180);
 }
 
 function changeTheme(){
-document.body.className=
-document.getElementById("themeSelect").value;
+document.body.className=document.getElementById("themeSelect").value;
 }
 </script>
 
