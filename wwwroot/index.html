@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<title>Buzzer</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.5/signalr.min.js"></script>
+
+<style>
+body {
+    margin: 0;
+    font-family: 'Segoe UI', sans-serif;
+    background: radial-gradient(circle at center, #001a3d, #000814);
+    color: white;
+    overflow: hidden;
+}
+
+/* LAYOUT */
+.container {
+    display: flex;
+    height: 100vh;
+}
+
+/* LEFT */
+.left {
+    flex: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+/* RIGHT */
+.right {
+    flex: 1;
+    padding: 20px;
+}
+
+/* TOP LEFT PARTECIPANTI */
+.players {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    background: rgba(0,0,0,0.4);
+    padding: 10px;
+    border-radius: 12px;
+    font-size: 14px;
+    min-width: 120px;
+    box-shadow: 0 0 10px #00cfff;
+}
+
+.players h4 {
+    margin: 0 0 5px 0;
+    font-size: 12px;
+    color: #00e5ff;
+}
+
+/* INPUT */
+input {
+    padding: 10px;
+    margin: 5px;
+    border-radius: 10px;
+    border: none;
+    font-size: 16px;
+}
+
+/* BUZZER */
+.buzzer {
+    width: 260px;
+    height: 260px;
+    border-radius: 50%;
+    background: radial-gradient(circle, #ff4d4d, #990000);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 36px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 0 30px red, 0 0 80px red;
+    transition: 0.1s;
+    animation: pulse 1.8s infinite;
+}
+
+.buzzer:active {
+    transform: scale(0.92);
+}
+
+/* ANIMAZIONE */
+@keyframes pulse {
+    0% { box-shadow: 0 0 30px red; }
+    50% { box-shadow: 0 0 80px red; }
+    100% { box-shadow: 0 0 30px red; }
+}
+
+/* CLASSIFICA */
+.right h2 {
+    text-align: center;
+    color: #00e5ff;
+}
+
+li {
+    background: rgba(255,255,255,0.08);
+    margin: 10px 0;
+    padding: 12px;
+    border-radius: 12px;
+    font-size: 18px;
+    display: flex;
+    justify-content: space-between;
+}
+
+/* MEDAGLIE */
+.gold { background: linear-gradient(90deg, #ffd700, #b8860b); color:black; }
+.silver { background: linear-gradient(90deg, #c0c0c0, #888); color:black; }
+.bronze { background: linear-gradient(90deg, #cd7f32, #8b4513); color:white; }
+
+/* BOTTOM */
+.bottom {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    display: flex;
+}
+
+.bottom button {
+    flex: 1;
+    padding: 22px;
+    font-size: 20px;
+    border: none;
+    cursor: pointer;
+    color: white;
+}
+
+.join {
+    background: linear-gradient(45deg, #00c853, #00e676);
+}
+
+.reset {
+    background: linear-gradient(45deg, #d50000, #ff1744);
+}
+</style>
+</head>
+
+<body>
+
+<!-- PARTECIPANTI -->
+<div class="players">
+    <h4>👥 Giocatori</h4>
+    <div id="players"></div>
+</div>
+
+<div class="container">
+
+    <!-- LEFT -->
+    <div class="left">
+        <h1 style="color:#00e5ff;">BUZZER</h1>
+
+        <input id="room" placeholder="Codice stanza">
+        <input id="name" placeholder="Nome">
+
+        <br>
+
+        <div class="buzzer" onclick="prenota()">
+            PRENOTA
+        </div>
+    </div>
+
+    <!-- RIGHT -->
+    <div class="right">
+        <h2>🏆 Classifica</h2>
+        <ul id="lista"></ul>
+    </div>
+
+</div>
+
+<!-- BOTTOM -->
+<div class="bottom">
+    <button class="join" onclick="join()">ENTRA</button>
+    <button class="reset" onclick="reset()">RESET</button>
+</div>
+
+<script>
+const connection = new signalR.HubConnectionBuilder()
+    .withUrl("/buzzerHub")
+    .build();
+
+let room = "";
+let name = "";
+connection.on("UpdatePlayers", players => {
+    document.getElementById("players").innerHTML =
+        players.map(x => `<div>${x}</div>`).join("");
+});
+connection.on("UpdateList", list => {
+
+    document.getElementById("lista").innerHTML =
+        list.map((x, i) => {
+            let cls = "";
+            if(i === 0) cls = "gold";
+            if(i === 1) cls = "silver";
+            if(i === 2) cls = "bronze";
+
+            return `<li class="${cls}">
+                <span>${i+1}. ${x}</span>
+                <span>⚡</span>
+            </li>`;
+        }).join("");
+});
+
+connection.start();
+
+function join() {
+    room = document.getElementById("room").value;
+    name = document.getElementById("name").value;
+    connection.invoke("JoinRoom", room, name);
+}
+
+function prenota() {
+    playBuzz();
+    connection.invoke("Prenota", room, name);
+}
+
+function reset() {
+    connection.invoke("Reset", room);
+}
+function playBuzz() {
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    const oscillator = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+
+    oscillator.type = "sawtooth";
+    oscillator.frequency.setValueAtTime(180, audioCtx.currentTime);
+    oscillator.frequency.exponentialRampToValueAtTime(90, audioCtx.currentTime + 0.35);
+
+    gainNode.gain.setValueAtTime(0.4, audioCtx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.35);
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+
+    oscillator.start();
+    oscillator.stop(audioCtx.currentTime + 0.35);
+}
+</script>
+
+</body>
+</html>
