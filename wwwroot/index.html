@@ -182,49 +182,6 @@ const connection = new signalR.HubConnectionBuilder()
 
 let room = "";
 let name = "";
-connection.on("UpdatePlayers", players => {
-    document.getElementById("players").innerHTML =
-        players.map(x => `<div>${x}</div>`).join("");
-});
-connection.on("UpdateList", list => {
-
-    document.getElementById("lista").innerHTML =
-        list.map((x, i) => {
-            let cls = "";
-            if(i === 0) cls = "gold";
-            if(i === 1) cls = "silver";
-            if(i === 2) cls = "bronze";
-
-            return `<li class="${cls}">
-                <span>${i+1}. ${x}</span>
-                <span>⚡</span>
-            </li>`;
-        }).join("");
-});
-
-connection.start();
-
-function join() {
-    room = document.getElementById("room").value;
-    name = document.getElementById("name").value;
-    connection.invoke("JoinRoom", room, name);
-}
-
-function prenota() {
-    playBuzz();
-    connection.invoke("Prenota", room, name);
-}
-
-function reset() {
-    connection.invoke("Reset", room);
-}
-<script>
-const connection = new signalR.HubConnectionBuilder()
-    .withUrl("/buzzerHub")
-    .build();
-
-let room = "";
-let name = "";
 let joined = false;
 let isAdmin = false;
 
@@ -233,7 +190,6 @@ connection.on("UpdatePlayers", players => {
     document.getElementById("players").innerHTML =
         players.map(x => `<div>${x}</div>`).join("");
 
-    // primo entrato = admin
     if (players.length > 0 && players[0] === name) {
         isAdmin = true;
         document.getElementById("resetBtn").style.display = "block";
@@ -250,57 +206,71 @@ connection.on("UpdateList", list => {
             if(i === 1) cls = "silver";
             if(i === 2) cls = "bronze";
 
-            return `<li class="${cls}">
-                ${i+1}. ${x}
-            </li>`;
+            return `<li class="${cls}">${i+1}. ${x}</li>`;
         }).join("");
 });
 
-connection.start();
+connection.start()
+    .then(() => console.log("Connesso"))
+    .catch(err => console.error(err));
 
 function join() {
 
-    if(joined) return;
+    if (joined) return;
 
-    room = document.getElementById("room").value;
-    name = document.getElementById("name").value;
+    room = document.getElementById("room").value.trim();
+    name = document.getElementById("name").value.trim();
 
-    connection.invoke("JoinRoom", room, name);
+    if (!room || !name) {
+        alert("Inserisci stanza e nome");
+        return;
+    }
 
-    joined = true;
-
-    // nasconde entra
-    document.getElementById("joinBtn").style.display = "none";
+    connection.invoke("JoinRoom", room, name)
+        .then(() => {
+            joined = true;
+            document.getElementById("joinBtn").style.display = "none";
+        })
+        .catch(err => console.error(err));
 }
 
 function prenota() {
-    connection.invoke("Prenota", room, name);
+
+    if (!joined) return;
+
     playBuzz();
+
+    connection.invoke("Prenota", room, name)
+        .catch(err => console.error(err));
 }
 
 function reset() {
-    if(isAdmin)
-        connection.invoke("Reset", room);
+
+    if (!isAdmin) return;
+
+    connection.invoke("Reset", room)
+        .catch(err => console.error(err));
 }
 
 function playBuzz() {
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-    const oscillator = audioCtx.createOscillator();
-    const gainNode = audioCtx.createGain();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
 
-    oscillator.type = "sawtooth";
-    oscillator.frequency.setValueAtTime(180, audioCtx.currentTime);
-    oscillator.frequency.exponentialRampToValueAtTime(90, audioCtx.currentTime + 0.35);
+    osc.type = "square";
+    osc.frequency.value = 180;
 
-    gainNode.gain.setValueAtTime(0.4, audioCtx.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.35);
+    gain.gain.value = 0.2;
 
-    oscillator.connect(gainNode);
-    gainNode.connect(audioCtx.destination);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
 
-    oscillator.start();
-    oscillator.stop(audioCtx.currentTime + 0.35);
+    osc.start();
+
+    setTimeout(() => {
+        osc.stop();
+    }, 180);
 }
 </script>
 
