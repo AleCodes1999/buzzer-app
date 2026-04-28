@@ -83,7 +83,7 @@ input{
 .right{
     flex:1;
     overflow-y:auto;
-    margin-bottom:80px;
+    padding-bottom:120px;
 }
 
 .right h2{
@@ -171,8 +171,8 @@ li{
 
 <!-- BOTTOM -->
 <div class="bottom">
-    <button class="join" onclick="join()">ENTRA</button>
-    <button class="reset" onclick="reset()">RESET</button>
+    <button id="joinBtn" class="join" onclick="join()">ENTRA</button>
+    <button id="resetBtn" class="reset" onclick="reset()" style="display:none;">RESET</button>
 </div>
 
 <script>
@@ -218,6 +218,71 @@ function prenota() {
 function reset() {
     connection.invoke("Reset", room);
 }
+<script>
+const connection = new signalR.HubConnectionBuilder()
+    .withUrl("/buzzerHub")
+    .build();
+
+let room = "";
+let name = "";
+let joined = false;
+let isAdmin = false;
+
+connection.on("UpdatePlayers", players => {
+
+    document.getElementById("players").innerHTML =
+        players.map(x => `<div>${x}</div>`).join("");
+
+    // primo entrato = admin
+    if (players.length > 0 && players[0] === name) {
+        isAdmin = true;
+        document.getElementById("resetBtn").style.display = "block";
+    }
+});
+
+connection.on("UpdateList", list => {
+
+    document.getElementById("lista").innerHTML =
+        list.map((x, i) => {
+
+            let cls = "";
+            if(i === 0) cls = "gold";
+            if(i === 1) cls = "silver";
+            if(i === 2) cls = "bronze";
+
+            return `<li class="${cls}">
+                ${i+1}. ${x}
+            </li>`;
+        }).join("");
+});
+
+connection.start();
+
+function join() {
+
+    if(joined) return;
+
+    room = document.getElementById("room").value;
+    name = document.getElementById("name").value;
+
+    connection.invoke("JoinRoom", room, name);
+
+    joined = true;
+
+    // nasconde entra
+    document.getElementById("joinBtn").style.display = "none";
+}
+
+function prenota() {
+    connection.invoke("Prenota", room, name);
+    playBuzz();
+}
+
+function reset() {
+    if(isAdmin)
+        connection.invoke("Reset", room);
+}
+
 function playBuzz() {
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
