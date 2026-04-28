@@ -34,6 +34,20 @@ public class BuzzerHub : Hub
     await Clients.Caller.SendAsync("UpdateList", room.ClickOrder);
 }
 
+public async Task LeaveRoom(string roomCode, string name)
+{
+    if (Rooms.ContainsKey(roomCode))
+    {
+        Rooms[roomCode].Players.Remove(name);
+        Rooms[roomCode].ClickOrder.Remove(name);
+
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, roomCode);
+
+        await Clients.Group(roomCode).SendAsync("UpdatePlayers", Rooms[roomCode].Players);
+        await Clients.Group(roomCode).SendAsync("UpdateList", Rooms[roomCode].ClickOrder);
+    }
+}
+
     public async Task Prenota(string roomCode, string name)
 {
     var room = Rooms[roomCode];
