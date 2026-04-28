@@ -32,7 +32,9 @@ public class BuzzerHub : Hub
 
         room.Players.Add(name);
         room.Points[name] = 0;
-        room.Stats[name] = room.Stats.ContainsKey(name) ? room.Stats[name] : new PlayerStat();
+
+        if (!room.Stats.ContainsKey(name))
+            room.Stats[name] = new PlayerStat();
 
         if (string.IsNullOrEmpty(room.Admin))
             room.Admin = name;
@@ -41,10 +43,17 @@ public class BuzzerHub : Hub
 
         await Groups.AddToGroupAsync(Context.ConnectionId, roomCode);
 
+        // Tutti aggiornati
         await Clients.Group(roomCode).SendAsync("UpdatePlayers", room.Players, room.Admin, room.RoundOpen);
         await Clients.Group(roomCode).SendAsync("UpdatePoints", room.Points);
         await Clients.Group(roomCode).SendAsync("UpdateHistory", room.History);
         await Clients.Group(roomCode).SendAsync("UpdateStats", room.Stats);
+
+        // Caller aggiornato direttamente (fix ingresso via link)
+        await Clients.Caller.SendAsync("UpdatePlayers", room.Players, room.Admin, room.RoundOpen);
+        await Clients.Caller.SendAsync("UpdatePoints", room.Points);
+        await Clients.Caller.SendAsync("UpdateHistory", room.History);
+        await Clients.Caller.SendAsync("UpdateStats", room.Stats);
         await Clients.Caller.SendAsync("UpdateList", room.ClickOrder);
 
         return true;
