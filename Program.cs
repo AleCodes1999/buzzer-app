@@ -15,68 +15,57 @@ app.Run();
 
 public class BuzzerHub : Hub
 {
+    private static readonly object LockObj = new();
     private static Dictionary<string, Room> Rooms = new();
 
     public async Task<bool> JoinRoom(string roomCode, string name)
     {
-        if (!Rooms.ContainsKey(roomCode))
-            Rooms[roomCode] = new Room();
+        Room room;
 
-        var room = Rooms[roomCode];
-
-        if (room.Players.Any(x => x.Equals(name, StringComparison.OrdinalIgnoreCase)))
+        lock (LockObj)
         {
-            await Clients.Caller.SendAsync("JoinError", "Nome già utilizzato");
-            return false;
+            if (!Rooms.ContainsKey(roomCode))
+                Rooms[roomCode] = new Room();
+
+            room = Rooms[roomCode];
+
+            if (room.Players.Any(x => x.Equals(name, StringComparison.OrdinalIgnoreCase)))
+                return false;
+
+            room.Players.Add(name);
+            room.Points[name] = room.Points.ContainsKey(name) ? room.Points[name] : 0;
+
+            if (!room.Stats.ContainsKey(name))
+                room.Stats[name] = new PlayerStat();
+
+            if (string.IsNullOrEmpty(room.Admin))
+                room.Admin = name;
+
+            room.ConnectionMap[Context.ConnectionId] = name;
         }
-
-        room.Players.Add(name);
-        room.Points[name] = 0;
-
-        if (!room.Stats.ContainsKey(name))
-            room.Stats[name] = new PlayerStat();
-
-        if (string.IsNullOrEmpty(room.Admin))
-            room.Admin = name;
-
-        room.ConnectionMap[Context.ConnectionId] = name;
 
         await Groups.AddToGroupAsync(Context.ConnectionId, roomCode);
 
-        // Tutti aggiornati
-        await Clients.Group(roomCode).SendAsync("UpdatePlayers", room.Players, room.Admin, room.RoundOpen);
-        await Clients.Group(roomCode).SendAsync("UpdatePoints", room.Points);
-        await Clients.Group(roomCode).SendAsync("UpdateHistory", room.History);
-        await Clients.Group(roomCode).SendAsync("UpdateStats", room.Stats);
-
-        // Caller aggiornato direttamente (fix ingresso via link)
-        await Clients.Caller.SendAsync("UpdatePlayers", room.Players, room.Admin, room.RoundOpen);
-        await Clients.Caller.SendAsync("UpdatePoints", room.Points);
-        await Clients.Caller.SendAsync("UpdateHistory", room.History);
-        await Clients.Caller.SendAsync("UpdateStats", room.Stats);
-        await Clients.Caller.SendAsync("UpdateList", room.ClickOrder);
+        await SendFullState(roomCode);
 
         return true;
     }
 
     public async Task LeaveRoom(string roomCode, string name)
     {
-        if (!Rooms.ContainsKey(roomCode))
-            return;
-
         await RemoveUser(roomCode, name, Context.ConnectionId);
     }
 
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
-        foreach (var roomKey in Rooms.Keys.ToList())
+        foreach (var key in Rooms.Keys.ToList())
         {
-            var room = Rooms[roomKey];
+            var room = Rooms[key];
 
             if (room.ConnectionMap.ContainsKey(Context.ConnectionId))
             {
                 var name = room.ConnectionMap[Context.ConnectionId];
-                await RemoveUser(roomKey, name, Context.ConnectionId);
+                await RemoveUser(key, name, Context.ConnectionId);
             }
         }
 
@@ -85,21 +74,25 @@ public class BuzzerHub : Hub
 
     private async Task RemoveUser(string roomCode, string name, string connectionId)
     {
-        var room = Rooms[roomCode];
+        if (!Rooms.ContainsKey(roomCode))
+            return;
 
-        room.Players.Remove(name);
-        room.ClickOrder.RemoveAll(x => x.Name == name);
-        room.ConnectionMap.Remove(connectionId);
-        room.Points.Remove(name);
+        lock (LockObj)
+        {
+            var room = Rooms[roomCode];
+
+            room.Players.Remove(name);
+            room.ClickOrder.RemoveAll(x => x.Name == name);
+            room.ConnectionMap.Remove(connectionId);
+            room.Points.Remove(name);
+
+            if (room.Admin == name)
+                room.Admin = room.Players.FirstOrDefault() ?? "";
+        }
 
         await Groups.RemoveFromGroupAsync(connectionId, roomCode);
 
-        if (room.Admin == name)
-            room.Admin = room.Players.FirstOrDefault() ?? "";
-
-        await Clients.Group(roomCode).SendAsync("UpdatePlayers", room.Players, room.Admin, room.RoundOpen);
-        await Clients.Group(roomCode).SendAsync("UpdateList", room.ClickOrder);
-        await Clients.Group(roomCode).SendAsync("UpdatePoints", room.Points);
+        await SendFullState(roomCode);
     }
 
     public async Task Prenota(string roomCode, string name)
@@ -107,35 +100,38 @@ public class BuzzerHub : Hub
         if (!Rooms.ContainsKey(roomCode))
             return;
 
-        var room = Rooms[roomCode];
+        bool first = false;
 
-        if (!room.RoundOpen)
-            return;
-
-        if (!room.ClickOrder.Any(x => x.Name == name))
+        lock (LockObj)
         {
-            var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            var room = Rooms[roomCode];
+
+            if (!room.RoundOpen)
+                return;
+
+            if (room.ClickOrder.Any(x => x.Name == name))
+                return;
 
             room.ClickOrder.Add(new ClickEntry
             {
                 Name = name,
-                Time = now
+                Time = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
             });
 
-            if (room.ClickOrder.Count == 1)
+            first = room.ClickOrder.Count == 1;
+
+            if (first)
             {
                 room.History.Insert(0, name);
-
                 room.Stats[name].Wins++;
                 room.Stats[name].LastWin = DateTime.Now.ToString("HH:mm");
-
-                await Clients.Group(roomCode).SendAsync("Winner", name);
-                await Clients.Group(roomCode).SendAsync("UpdateHistory", room.History);
-                await Clients.Group(roomCode).SendAsync("UpdateStats", room.Stats);
             }
-
-            await Clients.Group(roomCode).SendAsync("UpdateList", room.ClickOrder);
         }
+
+        if (first)
+            await Clients.Group(roomCode).SendAsync("Winner", name);
+
+        await SendFullState(roomCode);
     }
 
     public async Task Reset(string roomCode, string name)
@@ -143,14 +139,17 @@ public class BuzzerHub : Hub
         if (!Rooms.ContainsKey(roomCode))
             return;
 
-        var room = Rooms[roomCode];
+        lock (LockObj)
+        {
+            var room = Rooms[roomCode];
 
-        if (room.Admin != name)
-            return;
+            if (room.Admin != name)
+                return;
 
-        room.ClickOrder.Clear();
+            room.ClickOrder.Clear();
+        }
 
-        await Clients.Group(roomCode).SendAsync("UpdateList", room.ClickOrder);
+        await SendFullState(roomCode);
     }
 
     public async Task ToggleRound(string roomCode, string name)
@@ -158,14 +157,17 @@ public class BuzzerHub : Hub
         if (!Rooms.ContainsKey(roomCode))
             return;
 
-        var room = Rooms[roomCode];
+        lock (LockObj)
+        {
+            var room = Rooms[roomCode];
 
-        if (room.Admin != name)
-            return;
+            if (room.Admin != name)
+                return;
 
-        room.RoundOpen = !room.RoundOpen;
+            room.RoundOpen = !room.RoundOpen;
+        }
 
-        await Clients.Group(roomCode).SendAsync("UpdatePlayers", room.Players, room.Admin, room.RoundOpen);
+        await SendFullState(roomCode);
     }
 
     public async Task AddPoint(string roomCode, string adminName, string target)
@@ -173,15 +175,18 @@ public class BuzzerHub : Hub
         if (!Rooms.ContainsKey(roomCode))
             return;
 
-        var room = Rooms[roomCode];
+        lock (LockObj)
+        {
+            var room = Rooms[roomCode];
 
-        if (room.Admin != adminName)
-            return;
+            if (room.Admin != adminName)
+                return;
 
-        if (room.Points.ContainsKey(target))
-            room.Points[target]++;
+            if (room.Points.ContainsKey(target))
+                room.Points[target]++;
+        }
 
-        await Clients.Group(roomCode).SendAsync("UpdatePoints", room.Points);
+        await SendFullState(roomCode);
     }
 
     public async Task RemovePoint(string roomCode, string adminName, string target)
@@ -189,15 +194,48 @@ public class BuzzerHub : Hub
         if (!Rooms.ContainsKey(roomCode))
             return;
 
-        var room = Rooms[roomCode];
+        lock (LockObj)
+        {
+            var room = Rooms[roomCode];
 
-        if (room.Admin != adminName)
+            if (room.Admin != adminName)
+                return;
+
+            if (room.Points.ContainsKey(target) && room.Points[target] > 0)
+                room.Points[target]--;
+        }
+
+        await SendFullState(roomCode);
+    }
+
+    private async Task SendFullState(string roomCode)
+    {
+        if (!Rooms.ContainsKey(roomCode))
             return;
 
-        if (room.Points.ContainsKey(target) && room.Points[target] > 0)
-            room.Points[target]--;
+        Room room = Rooms[roomCode];
 
-        await Clients.Group(roomCode).SendAsync("UpdatePoints", room.Points);
+        await Clients.Group(roomCode).SendAsync(
+            "UpdatePlayers",
+            room.Players,
+            room.Admin,
+            room.RoundOpen);
+
+        await Clients.Group(roomCode).SendAsync(
+            "UpdateList",
+            room.ClickOrder);
+
+        await Clients.Group(roomCode).SendAsync(
+            "UpdatePoints",
+            room.Points);
+
+        await Clients.Group(roomCode).SendAsync(
+            "UpdateHistory",
+            room.History);
+
+        await Clients.Group(roomCode).SendAsync(
+            "UpdateStats",
+            room.Stats);
     }
 }
 
