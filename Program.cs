@@ -282,6 +282,7 @@ public class BuzzerHub : Hub
 
 public class Room
 {
+    public string Pin { get; set; } = "";
     public DateTime LastActivity { get; set; } = DateTime.UtcNow;
     public List<string> Players { get; set; } = new();
     public List<ClickEntry> ClickOrder { get; set; } = new();
