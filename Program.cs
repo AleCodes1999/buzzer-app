@@ -32,6 +32,7 @@ public class BuzzerHub : Hub
 
         room.Players.Add(name);
         room.Points[name] = 0;
+        room.Stats[name] = room.Stats.ContainsKey(name) ? room.Stats[name] : new PlayerStat();
 
         if (string.IsNullOrEmpty(room.Admin))
             room.Admin = name;
@@ -40,8 +41,10 @@ public class BuzzerHub : Hub
 
         await Groups.AddToGroupAsync(Context.ConnectionId, roomCode);
 
-        await Clients.Group(roomCode).SendAsync("UpdatePlayers", room.Players, room.Admin);
+        await Clients.Group(roomCode).SendAsync("UpdatePlayers", room.Players, room.Admin, room.RoundOpen);
         await Clients.Group(roomCode).SendAsync("UpdatePoints", room.Points);
+        await Clients.Group(roomCode).SendAsync("UpdateHistory", room.History);
+        await Clients.Group(roomCode).SendAsync("UpdateStats", room.Stats);
         await Clients.Caller.SendAsync("UpdateList", room.ClickOrder);
 
         return true;
@@ -85,7 +88,7 @@ public class BuzzerHub : Hub
         if (room.Admin == name)
             room.Admin = room.Players.FirstOrDefault() ?? "";
 
-        await Clients.Group(roomCode).SendAsync("UpdatePlayers", room.Players, room.Admin);
+        await Clients.Group(roomCode).SendAsync("UpdatePlayers", room.Players, room.Admin, room.RoundOpen);
         await Clients.Group(roomCode).SendAsync("UpdateList", room.ClickOrder);
         await Clients.Group(roomCode).SendAsync("UpdatePoints", room.Points);
     }
@@ -97,13 +100,30 @@ public class BuzzerHub : Hub
 
         var room = Rooms[roomCode];
 
+        if (!room.RoundOpen)
+            return;
+
         if (!room.ClickOrder.Any(x => x.Name == name))
         {
+            var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
             room.ClickOrder.Add(new ClickEntry
             {
                 Name = name,
-                Time = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+                Time = now
             });
+
+            if (room.ClickOrder.Count == 1)
+            {
+                room.History.Insert(0, name);
+
+                room.Stats[name].Wins++;
+                room.Stats[name].LastWin = DateTime.Now.ToString("HH:mm");
+
+                await Clients.Group(roomCode).SendAsync("Winner", name);
+                await Clients.Group(roomCode).SendAsync("UpdateHistory", room.History);
+                await Clients.Group(roomCode).SendAsync("UpdateStats", room.Stats);
+            }
 
             await Clients.Group(roomCode).SendAsync("UpdateList", room.ClickOrder);
         }
@@ -122,6 +142,21 @@ public class BuzzerHub : Hub
         room.ClickOrder.Clear();
 
         await Clients.Group(roomCode).SendAsync("UpdateList", room.ClickOrder);
+    }
+
+    public async Task ToggleRound(string roomCode, string name)
+    {
+        if (!Rooms.ContainsKey(roomCode))
+            return;
+
+        var room = Rooms[roomCode];
+
+        if (room.Admin != name)
+            return;
+
+        room.RoundOpen = !room.RoundOpen;
+
+        await Clients.Group(roomCode).SendAsync("UpdatePlayers", room.Players, room.Admin, room.RoundOpen);
     }
 
     public async Task AddPoint(string roomCode, string adminName, string target)
@@ -164,10 +199,19 @@ public class Room
     public string Admin { get; set; } = "";
     public Dictionary<string, string> ConnectionMap { get; set; } = new();
     public Dictionary<string, int> Points { get; set; } = new();
+    public bool RoundOpen { get; set; } = true;
+    public List<string> History { get; set; } = new();
+    public Dictionary<string, PlayerStat> Stats { get; set; } = new();
 }
 
 public class ClickEntry
 {
     public string Name { get; set; } = "";
     public long Time { get; set; }
+}
+
+public class PlayerStat
+{
+    public int Wins { get; set; }
+    public string LastWin { get; set; } = "";
 }
