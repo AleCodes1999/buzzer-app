@@ -58,28 +58,6 @@ backdrop-filter:blur(8px);
 box-shadow:0 0 15px rgba(0,255,255,.3);
 }
 
-#winnerBanner{
-position:fixed;
-top:70px;
-left:50%;
-transform:translateX(-50%);
-padding:14px 26px;
-border-radius:16px;
-font-size:22px;
-font-weight:bold;
-background:linear-gradient(90deg,#ffd700,#ff9800);
-color:black;
-z-index:999;
-display:none;
-box-shadow:0 0 25px gold;
-animation:pop .4s;
-}
-
-@keyframes pop{
-0%{transform:translateX(-50%) scale(.7);}
-100%{transform:translateX(-50%) scale(1);}
-}
-
 .container{
 display:flex;
 flex-direction:column;
@@ -98,7 +76,6 @@ box-shadow:0 10px 25px rgba(0,0,0,.18);
 }
 
 .players{text-align:center;font-size:14px;}
-
 .left{text-align:center;}
 
 h1{
@@ -227,7 +204,6 @@ font-weight:bold;
 </select>
 
 <div id="backBtn" onclick="goBack()" style="display:none;">←</div>
-<div id="winnerBanner"></div>
 
 <div class="container">
 
@@ -262,16 +238,6 @@ font-weight:bold;
 <ul id="pointsList"></ul>
 </div>
 
-<div class="card">
-<h2>📜 Storico Vincitori</h2>
-<ul id="historyList"></ul>
-</div>
-
-<div class="card">
-<h2>📊 Statistiche</h2>
-<ul id="statsList"></ul>
-</div>
-
 </div>
 
 <div class="bottom">
@@ -300,25 +266,6 @@ if(joined) connection.invoke("LeaveRoom",room,name);
 
 connection.on("JoinError",msg=>alert(msg));
 
-connection.on("Winner",winner=>{
-let b=document.getElementById("winnerBanner");
-b.innerHTML="🥇 "+winner+" VINCE!";
-b.style.display="block";
-setTimeout(()=>b.style.display="none",2200);
-});
-
-connection.on("UpdateHistory",history=>{
-document.getElementById("historyList").innerHTML=
-history.map((x,i)=>`<li>${i+1}. ${x}</li>`).join("");
-});
-
-connection.on("UpdateStats",stats=>{
-document.getElementById("statsList").innerHTML=
-Object.entries(stats).map(x=>
-`<li>${x[0]} <span style="float:right;">${x[1].wins} win</span></li>`
-).join("");
-});
-
 connection.on("UpdatePlayers",(players,admin,open)=>{
 
 roundOpen=open;
@@ -340,7 +287,6 @@ btn.className="smallBtn roundOpen";
 btn.innerHTML="🟠 Round chiuso";
 btn.className="smallBtn roundClosed";
 }
-
 });
 
 connection.on("UpdateList",list=>{
