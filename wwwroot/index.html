@@ -254,21 +254,23 @@ if(joined) return;
 room=document.getElementById("room").value.trim();
 name=document.getElementById("name").value.trim();
 
-if(!room||!name){
-alert("Inserisci stanza e nome");
-return;
+if(!room || !name){
+    alert("Inserisci stanza e nome");
+    return;
 }
 
-connection.invoke("JoinRoom",room,name).then(()=>{
+connection.invoke("JoinRoom", room, name)
+.then(success => {
 
-joined=true;
+    if(!success) return;
 
-document.getElementById("joinBtn").style.display="none";
-document.getElementById("joinPanel").style.display="none";
-document.getElementById("backBtn").style.display="flex";
+    joined = true;
 
-history.replaceState(null,"","?room="+encodeURIComponent(room));
+    document.getElementById("joinBtn").style.display = "none";
+    document.getElementById("joinPanel").style.display = "none";
+    document.getElementById("backBtn").style.display = "flex";
 
+    history.replaceState(null,"","?room="+encodeURIComponent(room));
 });
 }
 
