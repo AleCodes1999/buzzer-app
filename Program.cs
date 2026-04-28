@@ -24,29 +24,43 @@ public class BuzzerHub : Hub
 
         var room = Rooms[roomCode];
 
-        if (!room.Players.Contains(name))
-            room.Players.Add(name);
+        // nome duplicato
+        if (room.Players.Any(x => x.Equals(name, StringComparison.OrdinalIgnoreCase)))
+        {
+            await Clients.Caller.SendAsync("JoinError", "Nome già utilizzato");
+            return;
+        }
+
+        room.Players.Add(name);
+
+        // primo entrato = admin
+        if (string.IsNullOrEmpty(room.Admin))
+            room.Admin = name;
 
         await Groups.AddToGroupAsync(Context.ConnectionId, roomCode);
 
-        await Clients.Group(roomCode).SendAsync("UpdatePlayers", room.Players);
+        await Clients.Group(roomCode).SendAsync("UpdatePlayers", room.Players, room.Admin);
         await Clients.Caller.SendAsync("UpdateList", room.ClickOrder);
     }
 
     public async Task LeaveRoom(string roomCode, string name)
     {
-        if (Rooms.ContainsKey(roomCode))
-        {
-            var room = Rooms[roomCode];
+        if (!Rooms.ContainsKey(roomCode))
+            return;
 
-            room.Players.Remove(name);
-            room.ClickOrder.RemoveAll(x => x.Name == name);
+        var room = Rooms[roomCode];
 
-            await Groups.RemoveFromGroupAsync(Context.ConnectionId, roomCode);
+        room.Players.Remove(name);
+        room.ClickOrder.RemoveAll(x => x.Name == name);
 
-            await Clients.Group(roomCode).SendAsync("UpdatePlayers", room.Players);
-            await Clients.Group(roomCode).SendAsync("UpdateList", room.ClickOrder);
-        }
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, roomCode);
+
+        // se esce admin passa al primo disponibile
+        if (room.Admin == name)
+            room.Admin = room.Players.FirstOrDefault() ?? "";
+
+        await Clients.Group(roomCode).SendAsync("UpdatePlayers", room.Players, room.Admin);
+        await Clients.Group(roomCode).SendAsync("UpdateList", room.ClickOrder);
     }
 
     public async Task Prenota(string roomCode, string name)
@@ -68,15 +82,20 @@ public class BuzzerHub : Hub
         }
     }
 
-    public async Task Reset(string roomCode)
+    public async Task Reset(string roomCode, string name)
     {
-        if (Rooms.ContainsKey(roomCode))
-        {
-            Rooms[roomCode].ClickOrder.Clear();
+        if (!Rooms.ContainsKey(roomCode))
+            return;
 
-            await Clients.Group(roomCode)
-                .SendAsync("UpdateList", Rooms[roomCode].ClickOrder);
-        }
+        var room = Rooms[roomCode];
+
+        // solo admin
+        if (room.Admin != name)
+            return;
+
+        room.ClickOrder.Clear();
+
+        await Clients.Group(roomCode).SendAsync("UpdateList", room.ClickOrder);
     }
 }
 
@@ -84,6 +103,7 @@ public class Room
 {
     public List<string> Players { get; set; } = new();
     public List<ClickEntry> ClickOrder { get; set; } = new();
+    public string Admin { get; set; } = "";
 }
 
 public class ClickEntry
