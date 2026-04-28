@@ -1,25 +1,5 @@
 using Microsoft.AspNetCore.SignalR;
 
-private static readonly object LockObj = new();
-    private static Dictionary<string, Room> Rooms = new();
-
-var timer = new System.Threading.Timer(_ =>
-{
-    lock (LockObj)
-    {
-        var expired = Rooms
-            .Where(x =>
-                x.Value.Players.Count == 0 &&
-                DateTime.UtcNow.Subtract(x.Value.LastActivity).TotalMinutes > 30)
-            .Select(x => x.Key)
-            .ToList();
-
-        foreach (var key in expired)
-            Rooms.Remove(key);
-    }
-
-}, null, TimeSpan.Zero, TimeSpan.FromMinutes(5));
-
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddSignalR();
@@ -35,11 +15,28 @@ app.Run();
 
 public class BuzzerHub : Hub
 {
-    
+    private static readonly object LockObj = new();
+    private static Dictionary<string, Room> Rooms = new();
+
+    private static readonly Timer CleanupTimer = new Timer(_ =>
+    {
+        lock (LockObj)
+        {
+            var expired = Rooms
+                .Where(x =>
+                    x.Value.Players.Count == 0 &&
+                    DateTime.UtcNow.Subtract(x.Value.LastActivity).TotalMinutes > 30)
+                .Select(x => x.Key)
+                .ToList();
+
+            foreach (var key in expired)
+                Rooms.Remove(key);
+        }
+
+    }, null, TimeSpan.Zero, TimeSpan.FromMinutes(5));
 
     public async Task<bool> JoinRoom(string roomCode, string name)
     {
-    room.LastActivity = DateTime.UtcNow;
         Room room;
 
         lock (LockObj)
@@ -48,6 +45,7 @@ public class BuzzerHub : Hub
                 Rooms[roomCode] = new Room();
 
             room = Rooms[roomCode];
+            room.LastActivity = DateTime.UtcNow;
 
             if (room.Players.Any(x => x.Equals(name, StringComparison.OrdinalIgnoreCase)))
                 return false;
@@ -65,26 +63,26 @@ public class BuzzerHub : Hub
         }
 
         await Groups.AddToGroupAsync(Context.ConnectionId, roomCode);
-
         await SendFullState(roomCode);
 
         return true;
     }
 
-public async Task ReconnectRoom(string roomCode, string name)
-{
-room.LastActivity = DateTime.UtcNow;
-    if (!Rooms.ContainsKey(roomCode))
-        return;
+    public async Task ReconnectRoom(string roomCode, string name)
+    {
+        if (!Rooms.ContainsKey(roomCode))
+            return;
 
-    var room = Rooms[roomCode];
+        lock (LockObj)
+        {
+            var room = Rooms[roomCode];
+            room.LastActivity = DateTime.UtcNow;
+            room.ConnectionMap[Context.ConnectionId] = name;
+        }
 
-    room.ConnectionMap[Context.ConnectionId] = name;
-
-    await Groups.AddToGroupAsync(Context.ConnectionId, roomCode);
-
-    await SendFullState(roomCode);
-}
+        await Groups.AddToGroupAsync(Context.ConnectionId, roomCode);
+        await SendFullState(roomCode);
+    }
 
     public async Task LeaveRoom(string roomCode, string name)
     {
@@ -95,6 +93,9 @@ room.LastActivity = DateTime.UtcNow;
     {
         foreach (var key in Rooms.Keys.ToList())
         {
+            if (!Rooms.ContainsKey(key))
+                continue;
+
             var room = Rooms[key];
 
             if (room.ConnectionMap.ContainsKey(Context.ConnectionId))
@@ -116,6 +117,7 @@ room.LastActivity = DateTime.UtcNow;
         {
             var room = Rooms[roomCode];
 
+            room.LastActivity = DateTime.UtcNow;
             room.Players.Remove(name);
             room.ClickOrder.RemoveAll(x => x.Name == name);
             room.ConnectionMap.Remove(connectionId);
@@ -126,13 +128,11 @@ room.LastActivity = DateTime.UtcNow;
         }
 
         await Groups.RemoveFromGroupAsync(connectionId, roomCode);
-
         await SendFullState(roomCode);
     }
 
     public async Task Prenota(string roomCode, string name)
     {
-    room.LastActivity = DateTime.UtcNow;
         if (!Rooms.ContainsKey(roomCode))
             return;
 
@@ -141,6 +141,7 @@ room.LastActivity = DateTime.UtcNow;
         lock (LockObj)
         {
             var room = Rooms[roomCode];
+            room.LastActivity = DateTime.UtcNow;
 
             if (!room.RoundOpen)
                 return;
@@ -172,13 +173,13 @@ room.LastActivity = DateTime.UtcNow;
 
     public async Task Reset(string roomCode, string name)
     {
-    room.LastActivity = DateTime.UtcNow;
         if (!Rooms.ContainsKey(roomCode))
             return;
 
         lock (LockObj)
         {
             var room = Rooms[roomCode];
+            room.LastActivity = DateTime.UtcNow;
 
             if (room.Admin != name)
                 return;
@@ -191,13 +192,13 @@ room.LastActivity = DateTime.UtcNow;
 
     public async Task ToggleRound(string roomCode, string name)
     {
-    room.LastActivity = DateTime.UtcNow;
         if (!Rooms.ContainsKey(roomCode))
             return;
 
         lock (LockObj)
         {
             var room = Rooms[roomCode];
+            room.LastActivity = DateTime.UtcNow;
 
             if (room.Admin != name)
                 return;
@@ -210,13 +211,13 @@ room.LastActivity = DateTime.UtcNow;
 
     public async Task AddPoint(string roomCode, string adminName, string target)
     {
-    room.LastActivity = DateTime.UtcNow;
         if (!Rooms.ContainsKey(roomCode))
             return;
 
         lock (LockObj)
         {
             var room = Rooms[roomCode];
+            room.LastActivity = DateTime.UtcNow;
 
             if (room.Admin != adminName)
                 return;
@@ -230,13 +231,13 @@ room.LastActivity = DateTime.UtcNow;
 
     public async Task RemovePoint(string roomCode, string adminName, string target)
     {
-    room.LastActivity = DateTime.UtcNow;
         if (!Rooms.ContainsKey(roomCode))
             return;
 
         lock (LockObj)
         {
             var room = Rooms[roomCode];
+            room.LastActivity = DateTime.UtcNow;
 
             if (room.Admin != adminName)
                 return;
