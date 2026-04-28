@@ -5,18 +5,23 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <title>Buzzer</title>
 
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#00142e">
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.5/signalr.min.js"></script>
 
 <style>
 *{box-sizing:border-box;}
+
 body{
 margin:0;
-font-family:Segoe UI;
+font-family:Segoe UI,Arial;
 color:white;
 min-height:100vh;
 overflow-y:auto;
-transition:.4s;
+transition:.35s;
 }
+
 body.blue{background:radial-gradient(circle,#002255,#000814);}
 body.green{background:radial-gradient(circle,#003d1f,#000814);}
 body.red{background:radial-gradient(circle,#4d0000,#000814);}
@@ -27,75 +32,120 @@ position:fixed;
 top:14px;
 left:14px;
 z-index:999;
-padding:8px;
-border-radius:10px;
+padding:10px;
 border:none;
+border-radius:12px;
+background:rgba(255,255,255,.12);
+color:white;
+backdrop-filter:blur(8px);
 }
 
 #backBtn{
 position:fixed;
 top:14px;
 right:14px;
-width:42px;
-height:42px;
-border-radius:12px;
-background:rgba(255,255,255,.08);
-color:#00e5ff;
+width:46px;
+height:46px;
+border-radius:14px;
+background:rgba(255,255,255,.12);
 display:flex;
 align-items:center;
 justify-content:center;
 font-size:28px;
 cursor:pointer;
 z-index:999;
+backdrop-filter:blur(8px);
+box-shadow:0 0 15px rgba(0,255,255,.3);
+}
+
+#winnerBanner{
+position:fixed;
+top:70px;
+left:50%;
+transform:translateX(-50%);
+padding:14px 26px;
+border-radius:16px;
+font-size:22px;
+font-weight:bold;
+background:linear-gradient(90deg,#ffd700,#ff9800);
+color:black;
+z-index:999;
+display:none;
+box-shadow:0 0 25px gold;
+animation:pop .4s;
+}
+
+@keyframes pop{
+0%{transform:translateX(-50%) scale(.7);}
+100%{transform:translateX(-50%) scale(1);}
 }
 
 .container{
 display:flex;
 flex-direction:column;
-min-height:100vh;
 padding:10px;
-padding-bottom:140px;
+padding-bottom:160px;
 }
 
-.players{
+.card{
 background:rgba(255,255,255,.08);
-border-radius:12px;
-padding:8px;
-font-size:14px;
-text-align:center;
+border:1px solid rgba(255,255,255,.08);
+border-radius:18px;
+padding:12px;
+margin-bottom:12px;
+backdrop-filter:blur(10px);
+box-shadow:0 10px 25px rgba(0,0,0,.18);
 }
 
-.left{text-align:center;margin-top:10px;}
+.players{text-align:center;font-size:14px;}
+
+.left{text-align:center;}
+
+h1{
+margin:8px 0 12px;
+font-size:34px;
+letter-spacing:1px;
+text-shadow:0 0 18px rgba(0,255,255,.35);
+}
+
+h2{
+margin:8px 0;
+font-size:22px;
+}
 
 input{
 width:48%;
-padding:12px;
+padding:14px;
 margin:4px;
 border:none;
-border-radius:10px;
+border-radius:12px;
 font-size:16px;
+background:rgba(255,255,255,.12);
+color:white;
 }
 
+input::placeholder{color:#ddd;}
+
 .buzzer{
-width:240px;
-height:240px;
+width:250px;
+height:250px;
 border-radius:50%;
-margin:15px auto;
-background:radial-gradient(circle,#ff4d4d,#990000);
+margin:16px auto;
+background:radial-gradient(circle,#ff5b5b,#b10000);
 display:flex;
 justify-content:center;
 align-items:center;
-font-size:34px;
+font-size:36px;
 font-weight:bold;
-box-shadow:0 0 30px red,0 0 80px red;
-animation:pulse 1.5s infinite;
+box-shadow:0 0 30px red,0 0 80px rgba(255,0,0,.5);
+animation:pulse 1.4s infinite;
 user-select:none;
 -webkit-user-select:none;
 -webkit-touch-callout:none;
 touch-action:manipulation;
 }
 
-.buzzer:active{transform:scale(.93);}
+.buzzer:active{transform:scale(.95);}
 
 @keyframes pulse{
 0%{box-shadow:0 0 20px red;}
@@ -106,8 +156,8 @@ touch-action:manipulation;
 li{
 list-style:none;
 padding:14px;
-margin:6px 0;
-border-radius:12px;
+margin:7px 0;
+border-radius:14px;
 background:rgba(255,255,255,.08);
 font-size:18px;
 }
@@ -117,10 +167,10 @@ font-size:18px;
 .bronze{background:linear-gradient(90deg,#cd7f32,#8b4513);}
 
 .pointBtn{
-padding:6px 10px;
-margin-left:5px;
+padding:7px 10px;
+margin-left:4px;
 border:none;
-border-radius:8px;
+border-radius:10px;
 font-size:16px;
 cursor:pointer;
 }
@@ -128,12 +178,29 @@ cursor:pointer;
 .plus{background:#00c853;color:white;}
 .minus{background:#d50000;color:white;}
 
+.smallBtn{
+width:100%;
+padding:14px;
+margin-top:8px;
+border:none;
+border-radius:14px;
+font-size:18px;
+font-weight:bold;
+cursor:pointer;
+color:white;
+}
+
+.share{background:#1565c0;}
+.roundOpen{background:#00c853;}
+.roundClosed{background:#ef6c00;}
+
 .bottom{
 position:fixed;
 bottom:0;
 left:0;
 width:100%;
 display:flex;
+z-index:999;
 }
 
 .bottom button{
@@ -142,6 +209,7 @@ border:none;
 padding:18px;
 font-size:22px;
 color:white;
+font-weight:bold;
 }
 
 .join{background:#00c853;}
@@ -159,15 +227,16 @@ color:white;
 </select>
 
 <div id="backBtn" onclick="goBack()" style="display:none;">←</div>
+<div id="winnerBanner"></div>
 
-<div class="players">
+<div class="container">
+
+<div class="card players">
 <h4>👥 Giocatori</h4>
 <div id="players"></div>
 </div>
 
-<div class="container">
-
-<div class="left">
+<div class="card left">
 
 <h1>BUZZER</h1>
 
@@ -176,20 +245,31 @@ color:white;
 <input id="name" placeholder="Nome">
 </div>
 
-<br>
+<div class="buzzer" onclick="prenota()" ontouchstart="prenota()">PRENOTA</div>
 
-<div class="buzzer" onclick="prenota()" ontouchstart="prenota()">
-PRENOTA
+<button class="smallBtn share" onclick="shareRoom()">📤 Condividi stanza</button>
+<button id="roundBtn" class="smallBtn roundOpen" onclick="toggleRound()" style="display:none;">🟢 Round aperto</button>
+
 </div>
 
-</div>
-
-<div class="right">
+<div class="card">
 <h2>🏆 Prenotati</h2>
 <ul id="lista"></ul>
+</div>
 
+<div class="card">
 <h2>⭐ Punti</h2>
 <ul id="pointsList"></ul>
+</div>
+
+<div class="card">
+<h2>📜 Storico Vincitori</h2>
+<ul id="historyList"></ul>
+</div>
+
+<div class="card">
+<h2>📊 Statistiche</h2>
+<ul id="statsList"></ul>
 </div>
 
 </div>
@@ -203,9 +283,12 @@ PRENOTA
 const connection=new signalR.HubConnectionBuilder().withUrl("/buzzerHub").build();
 
 let room="";
-let name="";
+let name=localStorage.getItem("buzzer_name") || "";
 let joined=false;
 let isAdmin=false;
+let roundOpen=true;
+
+document.getElementById("name").value=name;
 
 const params=new URLSearchParams(window.location.search);
 const roomFromUrl=params.get("room");
@@ -217,12 +300,47 @@ if(joined) connection.invoke("LeaveRoom",room,name);
 
 connection.on("JoinError",msg=>alert(msg));
 
-connection.on("UpdatePlayers",(players,admin)=>{
+connection.on("Winner",winner=>{
+let b=document.getElementById("winnerBanner");
+b.innerHTML="🥇 "+winner+" VINCE!";
+b.style.display="block";
+setTimeout(()=>b.style.display="none",2200);
+});
+
+connection.on("UpdateHistory",history=>{
+document.getElementById("historyList").innerHTML=
+history.map((x,i)=>`<li>${i+1}. ${x}</li>`).join("");
+});
+
+connection.on("UpdateStats",stats=>{
+document.getElementById("statsList").innerHTML=
+Object.entries(stats).map(x=>
+`<li>${x[0]} <span style="float:right;">${x[1].wins} win</span></li>`
+).join("");
+});
+
+connection.on("UpdatePlayers",(players,admin,open)=>{
+
+roundOpen=open;
+
 document.getElementById("players").innerHTML=
 players.map(x=>`<div>${x} ${x===admin?'👑':''}</div>`).join("");
 
 isAdmin=(admin===name);
+
 document.getElementById("resetBtn").style.display=isAdmin?"block":"none";
+document.getElementById("roundBtn").style.display=isAdmin?"block":"none";
+
+let btn=document.getElementById("roundBtn");
+
+if(roundOpen){
+btn.innerHTML="🟢 Round aperto";
+btn.className="smallBtn roundOpen";
+}else{
+btn.innerHTML="🟠 Round chiuso";
+btn.className="smallBtn roundClosed";
+}
+
 });
 
 connection.on("UpdateList",list=>{
@@ -239,15 +357,12 @@ if(i===0) cls="gold";
 if(i===1) cls="silver";
 if(i===2) cls="bronze";
 
-if(i===0 && list.length>1 && (list[1].time-first)<100)
-setTimeout(()=>alert("🔥 FOTO FINISH"),50);
-
-return `
-<li class="${cls}">
+return `<li class="${cls}">
 ${i+1}. ${x.name}
 <span style="float:right;">${diff} ms</span>
 </li>`;
 }).join("");
+
 });
 
 connection.on("UpdatePoints",points=>{
@@ -265,15 +380,14 @@ controls=`
 <button class="pointBtn minus" onclick="removePoint('${x[0]}')">-</button>`;
 }
 
-return `
-<li>
+return `<li>
 ${i+1}. ${x[0]}
 <span style="float:right;">
-${x[1]} pt
-${controls}
+${x[1]} pt ${controls}
 </span>
 </li>`;
 }).join("");
+
 });
 
 connection.start();
@@ -285,10 +399,12 @@ if(joined) return;
 room=document.getElementById("room").value.trim();
 name=document.getElementById("name").value.trim();
 
-if(!room||!name){
+if(!room || !name){
 alert("Inserisci stanza e nome");
 return;
 }
+
+localStorage.setItem("buzzer_name",name);
 
 connection.invoke("JoinRoom",room,name).then(success=>{
 
@@ -311,13 +427,11 @@ connection.invoke("LeaveRoom",room,name);
 joined=false;
 isAdmin=false;
 
-room="";
-name="";
-
 document.getElementById("joinPanel").style.display="block";
 document.getElementById("joinBtn").style.display="block";
 document.getElementById("backBtn").style.display="none";
 document.getElementById("resetBtn").style.display="none";
+document.getElementById("roundBtn").style.display="none";
 
 document.getElementById("players").innerHTML="";
 document.getElementById("lista").innerHTML="";
@@ -326,7 +440,7 @@ document.getElementById("pointsList").innerHTML="";
 
 function prenota(){
 
-if(!joined) return;
+if(!joined || !roundOpen) return;
 
 let pos=document.querySelectorAll("#lista li").length+1;
 
@@ -342,7 +456,11 @@ connection.invoke("Prenota",room,name);
 }
 
 function reset(){
-if(joined) connection.invoke("Reset",room,name);
+connection.invoke("Reset",room,name);
+}
+
+function toggleRound(){
+connection.invoke("ToggleRound",room,name);
 }
 
 function addPoint(target){
@@ -353,6 +471,18 @@ function removePoint(target){
 connection.invoke("RemovePoint",room,name,target);
 }
 
+function shareRoom(){
+
+let url=location.origin+"?room="+encodeURIComponent(room);
+
+if(navigator.share){
+navigator.share({title:"Buzzer",text:"Entra nella stanza "+room,url:url});
+}else{
+navigator.clipboard.writeText(url);
+alert("Link copiato");
+}
+}
+
 function playBuzz(pos){
 
 const ctx=new(window.AudioContext||window.webkitAudioContext)();
@@ -361,8 +491,8 @@ const gain=ctx.createGain();
 
 osc.type="square";
 
-if(pos===1) osc.frequency.value=400;
-else if(pos===2) osc.frequency.value=250;
+if(pos===1) osc.frequency.value=420;
+else if(pos===2) osc.frequency.value=280;
 else osc.frequency.value=180;
 
 gain.gain.value=.2;
@@ -371,12 +501,22 @@ osc.connect(gain);
 gain.connect(ctx.destination);
 
 osc.start();
-
 setTimeout(()=>osc.stop(),180);
 }
 
 function changeTheme(){
 document.body.className=document.getElementById("themeSelect").value;
+localStorage.setItem("buzzer_theme",document.body.className);
+}
+
+let savedTheme=localStorage.getItem("buzzer_theme");
+if(savedTheme){
+document.body.className=savedTheme;
+document.getElementById("themeSelect").value=savedTheme;
+}
+
+if("serviceWorker" in navigator){
+navigator.serviceWorker.register("sw.js");
 }
 </script>
 
