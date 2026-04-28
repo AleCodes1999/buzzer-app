@@ -1,5 +1,25 @@
 using Microsoft.AspNetCore.SignalR;
 
+private static readonly object LockObj = new();
+    private static Dictionary<string, Room> Rooms = new();
+
+var timer = new System.Threading.Timer(_ =>
+{
+    lock (LockObj)
+    {
+        var expired = Rooms
+            .Where(x =>
+                x.Value.Players.Count == 0 &&
+                DateTime.UtcNow.Subtract(x.Value.LastActivity).TotalMinutes > 30)
+            .Select(x => x.Key)
+            .ToList();
+
+        foreach (var key in expired)
+            Rooms.Remove(key);
+    }
+
+}, null, TimeSpan.Zero, TimeSpan.FromMinutes(5));
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddSignalR();
@@ -15,11 +35,11 @@ app.Run();
 
 public class BuzzerHub : Hub
 {
-    private static readonly object LockObj = new();
-    private static Dictionary<string, Room> Rooms = new();
+    
 
     public async Task<bool> JoinRoom(string roomCode, string name)
     {
+    room.LastActivity = DateTime.UtcNow;
         Room room;
 
         lock (LockObj)
@@ -53,6 +73,7 @@ public class BuzzerHub : Hub
 
 public async Task ReconnectRoom(string roomCode, string name)
 {
+room.LastActivity = DateTime.UtcNow;
     if (!Rooms.ContainsKey(roomCode))
         return;
 
@@ -111,6 +132,7 @@ public async Task ReconnectRoom(string roomCode, string name)
 
     public async Task Prenota(string roomCode, string name)
     {
+    room.LastActivity = DateTime.UtcNow;
         if (!Rooms.ContainsKey(roomCode))
             return;
 
@@ -150,6 +172,7 @@ public async Task ReconnectRoom(string roomCode, string name)
 
     public async Task Reset(string roomCode, string name)
     {
+    room.LastActivity = DateTime.UtcNow;
         if (!Rooms.ContainsKey(roomCode))
             return;
 
@@ -168,6 +191,7 @@ public async Task ReconnectRoom(string roomCode, string name)
 
     public async Task ToggleRound(string roomCode, string name)
     {
+    room.LastActivity = DateTime.UtcNow;
         if (!Rooms.ContainsKey(roomCode))
             return;
 
@@ -186,6 +210,7 @@ public async Task ReconnectRoom(string roomCode, string name)
 
     public async Task AddPoint(string roomCode, string adminName, string target)
     {
+    room.LastActivity = DateTime.UtcNow;
         if (!Rooms.ContainsKey(roomCode))
             return;
 
@@ -205,6 +230,7 @@ public async Task ReconnectRoom(string roomCode, string name)
 
     public async Task RemovePoint(string roomCode, string adminName, string target)
     {
+    room.LastActivity = DateTime.UtcNow;
         if (!Rooms.ContainsKey(roomCode))
             return;
 
@@ -255,6 +281,7 @@ public async Task ReconnectRoom(string roomCode, string name)
 
 public class Room
 {
+    public DateTime LastActivity { get; set; } = DateTime.UtcNow;
     public List<string> Players { get; set; } = new();
     public List<ClickEntry> ClickOrder { get; set; } = new();
     public string Admin { get; set; } = "";
