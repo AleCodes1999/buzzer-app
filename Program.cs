@@ -51,6 +51,20 @@ public class BuzzerHub : Hub
         return true;
     }
 
+public async Task ReconnectRoom(string roomCode, string name)
+{
+    if (!Rooms.ContainsKey(roomCode))
+        return;
+
+    var room = Rooms[roomCode];
+
+    room.ConnectionMap[Context.ConnectionId] = name;
+
+    await Groups.AddToGroupAsync(Context.ConnectionId, roomCode);
+
+    await SendFullState(roomCode);
+}
+
     public async Task LeaveRoom(string roomCode, string name)
     {
         await RemoveUser(roomCode, name, Context.ConnectionId);
