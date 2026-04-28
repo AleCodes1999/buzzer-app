@@ -17,31 +17,35 @@ public class BuzzerHub : Hub
 {
     private static Dictionary<string, Room> Rooms = new();
 
-    public async Task JoinRoom(string roomCode, string name)
+    public async Task<bool> JoinRoom(string roomCode, string name)
+{
+    if (!Rooms.ContainsKey(roomCode))
+        Rooms[roomCode] = new Room();
+
+    var room = Rooms[roomCode];
+
+    if (room.Players.Any(x => x.Equals(name, StringComparison.OrdinalIgnoreCase)))
     {
-        if (!Rooms.ContainsKey(roomCode))
-            Rooms[roomCode] = new Room();
-
-        var room = Rooms[roomCode];
-
-        if (room.Players.Any(x => x.Equals(name, StringComparison.OrdinalIgnoreCase)))
-        {
-            await Clients.Caller.SendAsync("JoinError", "Nome già utilizzato");
-            return;
-        }
-
-        room.Players.Add(name);
-
-        if (string.IsNullOrEmpty(room.Admin))
-            room.Admin = name;
-
-        room.ConnectionMap[Context.ConnectionId] = name;
-
-        await Groups.AddToGroupAsync(Context.ConnectionId, roomCode);
-
-        await Clients.Group(roomCode).SendAsync("UpdatePlayers", room.Players, room.Admin);
-        await Clients.Caller.SendAsync("UpdateList", room.ClickOrder);
+        await Clients.Caller.SendAsync("JoinError", "Nome già utilizzato");
+        return false;
     }
+
+    room.Players.Add(name);
+
+    if (string.IsNullOrEmpty(room.Admin))
+        room.Admin = name;
+
+    room.ConnectionMap[Context.ConnectionId] = name;
+
+    await Groups.AddToGroupAsync(Context.ConnectionId, roomCode);
+
+    await Clients.Group(roomCode)
+        .SendAsync("UpdatePlayers", room.Players, room.Admin);
+
+    await Clients.Caller.SendAsync("UpdateList", room.ClickOrder);
+
+    return true;
+}
 
     public async Task LeaveRoom(string roomCode, string name)
     {
