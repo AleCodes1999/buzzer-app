@@ -319,6 +319,14 @@ function prenota() {
         .catch(err => console.error(err));
 }
 
+    function reset() {
+
+    if (!joined) return;
+
+    connection.invoke("Reset", room)
+        .then(() => console.log("Reset eseguito"))
+        .catch(err => console.error(err));
+}
 function playBuzz() {
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
